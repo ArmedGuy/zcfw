@@ -1,5 +1,12 @@
 package registry
 
+import (
+	cfg "github.com/ArmedGuy/zcfw/config"
+)
+
 type Registry interface {
-	Watch() error
+	Register() error
+	Watch(*cfg.Config) (chan string, error)
 }
+
+var Default Registry

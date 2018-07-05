@@ -11,13 +11,13 @@ func NewBackend() (firewall.Firewall, error) {
 }
 
 func (ip *iptables) Register() error {
-
+	return nil
 }
 
 func (ip *iptables) AddRule(rule *firewall.Rule) error {
-
+	return nil
 }
 
 func (ip *iptables) RemoveRule(rule *firewall.Rule) error {
-
+	return nil
 }
