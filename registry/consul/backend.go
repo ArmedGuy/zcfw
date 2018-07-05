@@ -11,7 +11,7 @@ type consul struct {
 
 func NewBackend() (*consul, error) {
 	client, err := api.NewClient(&api.Config{
-		Address: "127.0.0.1",
+		Address: "127.0.0.1:8500",
 	})
 	if err != nil {
 		return nil, err
@@ -26,7 +26,7 @@ func (c *consul) Register() error {
 func (c *consul) Watch(cfg *cfg.Config) (chan string, error) {
 	svc := make(chan string)
 	if cfg.Mode == "service" {
-		watchIntentions(c.client, cfg, svc)
+		go watchIntentions(c.client, cfg, svc)
 	} else {
 		path := "zcfw/zones/" + cfg.Zone + "/firewall"
 		go watchKV(c.client, path, svc, true)

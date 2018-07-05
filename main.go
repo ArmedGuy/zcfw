@@ -36,7 +36,8 @@ func initFirewall() {
 }
 
 func watchRegistry() {
-	cfg := &config.Config{Zone: "default", Mode: "distributed"}
+	log.Printf("[DEBUG] zcfw: Starting to watch registry for changes")
+	cfg := &config.Config{Zone: "default", Mode: "service"}
 	svc, err := registry.Default.Watch(cfg)
 	if err != nil {
 		log.Printf("[ERROR] zcfw: Failed to start watching registry. %v", err)
@@ -47,10 +48,12 @@ func watchRegistry() {
 	)
 	for {
 		config = <-svc
+		log.Printf("[DEBUG] zcfw: Read from service")
 		if config == last {
+			log.Printf("[DEBUG] zcfw: Same as last time, contine")
 			continue
 		}
-		log.Printf(config)
+		log.Println(config)
 		last = config
 	}
 }

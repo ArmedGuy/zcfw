@@ -2,6 +2,7 @@ package consul
 
 import (
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,9 +20,8 @@ func watchIntentions(client *api.Client, cfg *cfg.Config, svc chan string) {
 			time.Sleep(time.Second)
 			continue
 		}
-
 		if value != lastValue || index != lastIndex {
-			log.Printf("[DEBUG] consul: Distributed config changed to #%d", index)
+			log.Printf("[DEBUG] consul: Distributed config changed to #%d.", index)
 			svc <- value
 			lastValue, lastIndex = value, index
 		}
@@ -29,7 +29,7 @@ func watchIntentions(client *api.Client, cfg *cfg.Config, svc chan string) {
 }
 
 func listIntentions(client *api.Client, zone string, waitIndex uint64) (string, uint64, error) {
-	q := &api.QueryOptions{RequireConsistent: true, WaitIndex: waitIndex}
+	q := &api.QueryOptions{WaitTime: time.Second * 15}
 	intentions, meta, err := client.Connect().Intentions(q)
 	if err != nil {
 		return "", 0, err
@@ -42,7 +42,7 @@ func listIntentions(client *api.Client, zone string, waitIndex uint64) (string, 
 		if strings.HasPrefix(intention.Description, "#zcfw") {
 			rules, err := buildRulesFromIntention(client, intention)
 			if err != nil {
-				return "", 0, nil
+				return "", 0, err
 			}
 			rows = append(rows, rules...)
 		}
@@ -69,7 +69,7 @@ func buildRulesFromIntention(client *api.Client, intention *api.Intention) ([]st
 		}
 		for _, src := range srcServices {
 			svcAddr := src.ServiceAddress
-			svcPort := string(src.ServicePort)
+			svcPort := strconv.Itoa(src.ServicePort)
 			if val, ok := args["src-addr"]; ok {
 				svcAddr = val
 			}
@@ -91,7 +91,7 @@ func buildRulesFromIntention(client *api.Client, intention *api.Intention) ([]st
 		}
 		for _, dest := range destServices {
 			svcAddr := dest.ServiceAddress
-			svcPort := string(dest.ServicePort)
+			svcPort := strconv.Itoa(dest.ServicePort)
 			if val, ok := args["dest-addr"]; ok {
 				svcAddr = val
 			}
@@ -106,7 +106,7 @@ func buildRulesFromIntention(client *api.Client, intention *api.Intention) ([]st
 	for _, dest := range destinations {
 		for _, src := range sources {
 			// Todo append other args to this rule
-			rules = append(rules, "rule "+src+" -> "+dest)
+			rules = append(rules, "rule "+string(intention.Action)+" "+src+" -> "+dest)
 		}
 	}
 	return rules, nil
@@ -117,7 +117,7 @@ func buildArgs(description string) map[string]string {
 	if !strings.HasPrefix(description, "#zcfw:") {
 		return ret
 	}
-	noPrefix := string(([]rune(description)[5:]))
+	noPrefix := string(([]rune(description)[6:]))
 
 	if strings.Contains(noPrefix, ",") {
 		parts := strings.Split(noPrefix, ",")
