@@ -61,7 +61,15 @@ func buildRulesFromIntention(client *api.Client, intention *api.Intention) ([]st
 
 	// Build sources map
 	if intention.SourceName == "*" {
-		sources = append(sources, "any")
+		if addr, ok := args["src-addr"]; ok {
+			if port, ok := args["src-port"]; ok {
+				sources = append(sources, addr+":"+port)
+			} else {
+				sources = append(sources, addr+":any")
+			}
+		} else {
+			sources = append(sources, "any")
+		}
 	} else {
 		srcServices, err := getServiceInfo(client, intention.SourceName)
 		if err != nil {
@@ -83,7 +91,15 @@ func buildRulesFromIntention(client *api.Client, intention *api.Intention) ([]st
 
 	// Build destination map
 	if intention.DestinationName == "*" {
-		destinations = append(destinations, "any")
+		if addr, ok := args["dest-addr"]; ok {
+			if port, ok := args["dest-port"]; ok {
+				destinations = append(destinations, addr+":"+port)
+			} else {
+				destinations = append(destinations, addr+":any")
+			}
+		} else {
+			destinations = append(destinations, "any")
+		}
 	} else {
 		destServices, err := getServiceInfo(client, intention.DestinationName)
 		if err != nil {
@@ -98,7 +114,7 @@ func buildRulesFromIntention(client *api.Client, intention *api.Intention) ([]st
 			if val, ok := args["dest-port"]; ok {
 				svcPort = val
 			}
-			destinations = append(sources, svcAddr+":"+svcPort)
+			destinations = append(destinations, svcAddr+":"+svcPort)
 		}
 	}
 
@@ -109,6 +125,7 @@ func buildRulesFromIntention(client *api.Client, intention *api.Intention) ([]st
 			rules = append(rules, "rule "+string(intention.Action)+" "+src+" -> "+dest)
 		}
 	}
+	rules = removeDuplicates(rules)
 	return rules, nil
 }
 
@@ -136,4 +153,18 @@ func buildArgs(description string) map[string]string {
 		ret[kv[0]] = kv[1]
 	}
 	return ret
+}
+
+func removeDuplicates(elements []string) []string {
+
+	found := make(map[string]bool)
+	var res []string
+
+	for v := range elements {
+		if found[elements[v]] != true {
+			found[elements[v]] = true
+			res = append(res, elements[v])
+		}
+	}
+	return res
 }

@@ -2,22 +2,22 @@ package iptables
 
 import "github.com/ArmedGuy/zcfw/firewall"
 
-type iptables struct {
+type IptablesFirewall struct {
 	table string
 }
 
 func NewBackend() (firewall.Firewall, error) {
-	return &iptables{table: ""}, nil
+	return &IptablesFirewall{table: ""}, nil
 }
 
-func (ip *iptables) Register() error {
+func (ip *IptablesFirewall) Register() error {
 	return nil
 }
 
-func (ip *iptables) AddRule(rule *firewall.Rule) error {
+func (ip *IptablesFirewall) AddRule(rule *firewall.Rule) error {
 	return nil
 }
 
-func (ip *iptables) RemoveRule(rule *firewall.Rule) error {
+func (ip *IptablesFirewall) RemoveRule(rule *firewall.Rule) error {
 	return nil
 }
