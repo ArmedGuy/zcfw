@@ -25,8 +25,8 @@ func (c *ConsulRegistry) Register() error {
 	return nil
 }
 
-func (c *ConsulRegistry) Watch(cfg *cfg.Config) (chan string, error) {
-	svc := make(chan string)
+func (c *ConsulRegistry) Watch(cfg *cfg.Config) (chan []string, error) {
+	svc := make(chan []string)
 	switch cfg.Mode {
 	case "service":
 		go watchIntentions(c.client, cfg, svc)

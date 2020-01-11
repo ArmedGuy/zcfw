@@ -10,9 +10,8 @@ import (
 	"github.com/hashicorp/consul/api"
 )
 
-func watchIntentions(client *api.Client, cfg *cfg.Config, svc chan string) {
+func watchIntentions(client *api.Client, cfg *cfg.Config, svc chan []string) {
 	var lastIndex uint64
-	var lastValue string
 	for {
 		value, index, err := listIntentions(client, cfg.Zone, lastIndex)
 		if err != nil {
@@ -20,35 +19,34 @@ func watchIntentions(client *api.Client, cfg *cfg.Config, svc chan string) {
 			time.Sleep(time.Second)
 			continue
 		}
-		if value != lastValue || index != lastIndex {
+		if index != lastIndex {
 			log.Printf("[DEBUG] consul: Distributed config changed to #%d.", index)
 			svc <- value
-			lastValue, lastIndex = value, index
+			lastIndex = index
 		}
 	}
 }
 
-func listIntentions(client *api.Client, zone string, waitIndex uint64) (string, uint64, error) {
+func listIntentions(client *api.Client, zone string, waitIndex uint64) ([]string, uint64, error) {
 	q := &api.QueryOptions{WaitTime: time.Second * 15}
 	intentions, meta, err := client.Connect().Intentions(q)
 	if err != nil {
-		return "", 0, err
+		return nil, 0, err
 	}
 	if len(intentions) == 0 {
-		return "", meta.LastIndex, nil
+		return nil, meta.LastIndex, nil
 	}
 	var rows []string
 	for _, intention := range intentions {
 		if strings.HasPrefix(intention.Description, "#zcfw") {
 			rules, err := buildRulesFromIntention(client, intention)
 			if err != nil {
-				return "", 0, err
+				return nil, 0, err
 			}
 			rows = append(rows, rules...)
 		}
 	}
-	ret := strings.Join(rows, "\n")
-	return ret, meta.LastIndex, nil
+	return rows, meta.LastIndex, nil
 
 }
 
@@ -63,12 +61,12 @@ func buildRulesFromIntention(client *api.Client, intention *api.Intention) ([]st
 	if intention.SourceName == "*" {
 		if addr, ok := args["src-addr"]; ok {
 			if port, ok := args["src-port"]; ok {
-				sources = append(sources, addr+":"+port)
+				sources = append(sources, addr+" port "+port)
 			} else {
-				sources = append(sources, addr+":any")
+				sources = append(sources, addr+"port 0")
 			}
 		} else {
-			sources = append(sources, "any")
+			sources = append(sources, ":: port 0")
 		}
 	} else {
 		srcServices, err := getServiceInfo(client, intention.SourceName)
@@ -85,7 +83,7 @@ func buildRulesFromIntention(client *api.Client, intention *api.Intention) ([]st
 				svcPort = val
 			}
 
-			sources = append(sources, svcAddr+":"+svcPort)
+			sources = append(sources, svcAddr+" port "+svcPort)
 		}
 	}
 
@@ -93,12 +91,12 @@ func buildRulesFromIntention(client *api.Client, intention *api.Intention) ([]st
 	if intention.DestinationName == "*" {
 		if addr, ok := args["dest-addr"]; ok {
 			if port, ok := args["dest-port"]; ok {
-				destinations = append(destinations, addr+":"+port)
+				destinations = append(destinations, addr+" port "+port)
 			} else {
-				destinations = append(destinations, addr+":any")
+				destinations = append(destinations, addr+" port 0")
 			}
 		} else {
-			destinations = append(destinations, "any")
+			destinations = append(destinations, ":: port 0")
 		}
 	} else {
 		destServices, err := getServiceInfo(client, intention.DestinationName)
@@ -114,7 +112,7 @@ func buildRulesFromIntention(client *api.Client, intention *api.Intention) ([]st
 			if val, ok := args["dest-port"]; ok {
 				svcPort = val
 			}
-			destinations = append(destinations, svcAddr+":"+svcPort)
+			destinations = append(destinations, svcAddr+" port "+svcPort)
 		}
 	}
 

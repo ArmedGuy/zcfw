@@ -6,7 +6,7 @@ import (
 
 type Registry interface {
 	Register() error
-	Watch(*cfg.Config) (chan string, error)
+	Watch(*cfg.Config) (chan []string, error)
 }
 
 var Default Registry

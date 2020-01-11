@@ -14,6 +14,10 @@ func (ip *IptablesFirewall) Register() error {
 	return nil
 }
 
+func (ip *IptablesFirewall) SetRules(rules []string) {
+	
+}
+
 func (ip *IptablesFirewall) AddRule(rule *firewall.Rule) error {
 	return nil
 }

@@ -12,9 +12,8 @@ import (
 
 // watchKV monitors a key in the KV store for changes.
 // watchKV is used to store distributed firewall configurations
-func watchKV(client *api.Client, path string, config chan string, separator bool) {
+func watchKV(client *api.Client, path string, config chan []string, separator bool) {
 	var lastIndex uint64
-	var lastValue string
 
 	for {
 		value, index, err := listKV(client, path, lastIndex, separator)
@@ -24,10 +23,10 @@ func watchKV(client *api.Client, path string, config chan string, separator bool
 			continue
 		}
 
-		if value != lastValue || index != lastIndex {
+		if index != lastIndex {
 			log.Printf("[DEBUG] consul: Distributed config changed to #%d", index)
 			config <- value
-			lastValue, lastIndex = value, index
+			lastIndex = index
 		}
 	}
 }
@@ -48,14 +47,14 @@ func listKeys(client *api.Client, path string, waitIndex uint64) ([]string, uint
 	return keys, meta.LastIndex, nil
 }
 
-func listKV(client *api.Client, path string, waitIndex uint64, separator bool) (string, uint64, error) {
+func listKV(client *api.Client, path string, waitIndex uint64, separator bool) ([]string, uint64, error) {
 	q := &api.QueryOptions{RequireConsistent: true, WaitIndex: waitIndex}
 	kvpairs, meta, err := client.KV().List(path, q)
 	if err != nil {
-		return "", 0, err
+		return nil, 0, err
 	}
 	if len(kvpairs) == 0 {
-		return "", meta.LastIndex, nil
+		return nil, meta.LastIndex, nil
 	}
 	var s []string
 	for _, kvpair := range kvpairs {
@@ -65,7 +64,7 @@ func listKV(client *api.Client, path string, waitIndex uint64, separator bool) (
 		}
 		s = append(s, val)
 	}
-	return strings.Join(s, "\n\n"), meta.LastIndex, nil
+	return s, meta.LastIndex, nil
 }
 
 func getKV(client *api.Client, key string, waitIndex uint64) (string, uint64, error) {

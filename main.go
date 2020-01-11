@@ -6,7 +6,7 @@ import (
 
 	"github.com/ArmedGuy/zcfw/config"
 	"github.com/ArmedGuy/zcfw/firewall"
-	"github.com/ArmedGuy/zcfw/firewall/iptables"
+	"github.com/ArmedGuy/zcfw/firewall/nftables"
 	"github.com/ArmedGuy/zcfw/registry"
 	"github.com/ArmedGuy/zcfw/registry/consul"
 )
@@ -28,11 +28,23 @@ func initRegistry() {
 }
 func initFirewall() {
 	var err error
-	firewall.Default, err = iptables.NewBackend()
+	firewall.Default, err = nftables.NewBackend()
 	if err != nil {
 		log.Printf("[ERROR] zcfw: Failed to initialize firewall backend. %v", err)
 		os.Exit(1)
 	}
+}
+
+func ConfigEquals(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, v := range a {
+		if v != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func watchRegistry() {
@@ -43,17 +55,18 @@ func watchRegistry() {
 		log.Printf("[ERROR] zcfw: Failed to start watching registry. %v", err)
 	}
 	var (
-		last   string
-		config string
+		last   []string
+		config []string
 	)
+
 	for {
 		config = <-svc
 		log.Printf("[DEBUG] zcfw: Read from service")
-		if config == last {
-			log.Printf("[DEBUG] zcfw: Same as last time, contine")
+		if ConfigEquals(config, last) {
+			log.Printf("[DEBUG] zcfw: Same as last time, continue")
 			continue
 		}
-		log.Println(config)
+		firewall.Default.SetRules(config)
 		last = config
 	}
 }
